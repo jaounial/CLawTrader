@@ -1,0 +1,16 @@
+# Core async / networking
+aiohttp>=3.9.0
+websockets>=12.0
+
+# Polymarket CLOB SDK (handles EIP-712 order signing)
+py-clob-client>=0.14.0
+
+# Ethereum signing
+eth-account>=0.11.0
+
+# Numerical / statistical
+numpy>=1.26.0
+scipy>=1.12.0          # optional — only needed if you add advanced signal fitting
+
+# Environment variable loading (optional helper)
+python-dotenv>=1.0.0
