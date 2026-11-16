@@ -160,3 +160,33 @@ Cross-check against Kalshi (`KXCBDECISIONCANADA`, closes 2026-12-09):
 - Trending events are long-dated; short-term 15-minute/hourly markets are presumably under
   the Markets tab but this is not yet confirmed.
 - Unknown: order types (limit vs market), minimum size, how the 2c fee is shown.
+
+## 10. App screens and BTC markets (2026-11-16, ~11:46-11:50 ET)
+
+**Wealthsimple Predict app (from screenshots)**
+- Markets tab sub-categories seen: Foreign exchange, Head to Head, Rates & Bonds, Stock
+  Indices, Commodities, Compute & GPUs, Crypto (more may be off-screen). So FX, indices,
+  yields, commodities and **crypto are all listed**.
+- Order ticket: enter a **dollar amount** (not a contract count), quick buttons 25/50/75%/Max,
+  a USD/CAD toggle, and an order-type dropdown currently reading "Market ($)". Whether
+  limit orders exist is unconfirmed. Account balance was $0.00 (unfunded).
+- Ticket shows Yes 44c / No 58c, which sum to 102c: these are **ask prices**. "2.27x payout"
+  is 1/0.44 and **excludes the 2c fee** (about 2.17x with it).
+- Trending long-dated cards (Bank of Canada Dec decision, "Best AI this month" Gemini 87%,
+  $573K vol, 7 markets) are the slow end of the product.
+
+**Kalshi BTC series that match the app**
+- `KXBTCMINMON` ("How low will BTC get in November?"): one-touch, Below $60,000 at 0.42/0.44,
+  matches the app's 44%.
+- `KXBTCD` (hourly above/below ladder, strikes every $100): spreads $0.01, 24h volume
+  49k-76k contracts per near-the-money strike, open interest 24k-32k. Very liquid.
+- `KXBTC15M`: "Yes if the 60s average of CF Benchmarks BRTI before the close is at least the
+  60s average before the open". Settlement is BRTI, not Coinbase spot.
+- Coinbase public ticker agreed with the ladder's implied centre to within about $50.
+
+**Modelling caveat found the hard way.** A driftless-lognormal model (`signal_engine/prob.py`)
+fed 2-hour realized volatility flagged "edges" of 7-12 cents on both ends of the hourly
+ladder. Realized vol per sqrt-minute was 0.00063 over 15 min, 0.00075 over 30 min, 0.00106
+over 2 h; the output swings with that choice. Those signals were artifacts of the vol input,
+not mispricing. **Do not alert on this model until it is backtested** against settled
+`KXBTCD` markets with Coinbase 1-minute history.
