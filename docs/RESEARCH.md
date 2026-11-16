@@ -106,3 +106,34 @@ structure, `RiskManager`, `PositionManager` and the rate limiter.
 2. Unblock primary-source access (allow the Kalshi, Wealthsimple and Globe and Mail hosts),
    then re-verify sections 1 and 2.
 3. Build a read-only data collector and paper-trading backtester before any execution code.
+
+## 8. Verified against Kalshi's live public API (2026-11-16 ~16:45Z)
+
+Unlike sections 1-7, these were read directly from `docs.kalshi.com` and
+`https://api.elections.kalshi.com/trade-api/v2`.
+
+- **No auth needed** for market data: `/markets`, `/series`, `/events`, orderbook.
+  Docs mention `external-api.kalshi.com` as the base, but `api.elections.kalshi.com` serves
+  all categories and works.
+- **Rate limits:** unauthenticated calls have a separate, smaller budget and return `429`
+  with no `Retry-After`. Use exponential backoff and narrow queries (`series_ticker=`).
+- **Prices** are dollar strings (`yes_bid_dollars`, `yes_ask_dollars`); contracts pay $1.
+  Tick is $0.001 between $0.01 and $0.99.
+- **Default `/markets` is full of sports parlays** (`KXMVE...`). Use `mve_filter=exclude`
+  and filter by `series_ticker` or category.
+- **Short-horizon series exist in Financials** (1,199 series): 15-minute, hourly and daily
+  contracts on S&P 500, Nasdaq, Dow, EUR/USD, GBP/USD, USD/JPY, USD/CAD, gold, WTI and
+  Treasury yields. Examples: `KXINX15M`, `KXINXU` (hourly above/below ladder),
+  `KXEURUSD15M`, `KXUSDJPY15M`, `KX10YRRATE15M`. Crypto has 15-minute/hourly series too.
+- **Liquidity snapshot** (one moment, midday ET): `KXINX15M` had 1 open market, spread
+  $0.01, open interest 3,416. `KXEURUSD15M` spread $0.02, OI 1,054. `KXUSDJPY15M` spread
+  $0.02. `KXINXU` hourly ladder had 200 strikes, most deep ITM/OTM at 0.99/1.00 with
+  almost no volume. Only strikes near the money matter.
+- **Contract shape:** "will price at expiry be above target?" with a fixed expiry. That is
+  directly modelable from underlying price, volatility and time remaining.
+- **Cost hurdle:** with a 1-2 cent spread plus the reported 2 cent fee, a trade needs
+  roughly 3-4 cents of true edge per contract to profit.
+
+Not yet verified: which of these series Wealthsimple actually lists, its order types and
+minimums, the settlement source for each index/FX series, and a real-time price feed for
+the underlyings.
