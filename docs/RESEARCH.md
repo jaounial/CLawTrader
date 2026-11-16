@@ -190,3 +190,30 @@ ladder. Realized vol per sqrt-minute was 0.00063 over 15 min, 0.00075 over 30 mi
 over 2 h; the output swings with that choice. Those signals were artifacts of the vol input,
 not mispricing. **Do not alert on this model until it is backtested** against settled
 `KXBTCD` markets with Coinbase 1-minute history.
+
+## 11. Backtest: lognormal model vs settled hourly BTC markets (KXBTCD)
+
+Setup: last 48 settled hours, quote taken 10 minutes before settlement from Kalshi
+historical candlesticks, strikes within 0.5% of Coinbase spot, buy at the ask (NO ask = 1 -
+YES bid) plus the 2c fee, scored against the real outcome. 308 (hour, strike) observations.
+Code: `signal_engine/backtest_btc.py`.
+
+| vol window (min) | min EV | trades | mean P&L / contract | s.e. | Brier model | Brier market |
+|---|---|---|---|---|---|---|
+| 15 | 0.03 | 66 | -0.093 | 0.036 | 0.110 | 0.105 |
+| 15 | 0.08 | 14 | -0.073 | 0.061 | 0.110 | 0.105 |
+| 30 | 0.03 | 75 | -0.065 | 0.039 | 0.111 | 0.105 |
+| 60 | 0.03 | 104 | -0.077 | 0.028 | 0.113 | 0.105 |
+| 120 | 0.03 | 123 | -0.067 | 0.028 | 0.113 | 0.105 |
+| 120 | 0.08 | 31 | -0.110 | 0.032 | 0.113 | 0.105 |
+
+(Other rows in the run were similar: all 12 combinations lost 6-12c per contract.)
+
+**Conclusion:** the market's mid-price predicted outcomes better than the model (lower
+Brier) and every fee-adjusted configuration lost money. The hourly BTC ladder is efficiently
+priced relative to a spot-plus-volatility model. Caveats: only 48 hours and overlapping
+strikes within each hour, so observations are correlated; this is "no sign of edge", not a
+proof that none exists. Quotes are the candle close, so real fills may differ.
+
+**Decision:** no BTC hourly trade alerts. Alerts stay disabled until a strategy passes a
+backtest with a positive fee-adjusted result.
