@@ -255,3 +255,34 @@ Wealthsimple's fee treatment of limit orders is unknown); the Index 15m sample i
 standard error.
 
 **Decision:** no strategy in these groups passes. Alerts remain disabled.
+
+## 13. Slower event markets: Canada survey and weather calibration (2026-11-16)
+
+**Canadian economics on Kalshi is too thin to test.** `KXCBDECISIONCANADA` (Bank of Canada
+decision) is the only liquid one: $172K volume on the Dec 2026 meeting, but only one prior
+meeting (5 markets) has settled, so there is nothing to backtest. `KXCANOREOY` (overnight
+rate, annual) and `KXCANCUTS` (cuts in a year) are about $30K each. A Bank-of-Canada
+market gives about 8 decisions a year, i.e. a handful of alerts, not high volume. (A broad
+"canad" series search also matched many California series; ignore those.)
+
+**Weather is the most testable slow category.** 145 daily series in Climate and Weather.
+Highest-temperature markets for about 20 US cities, 12 strikes per city per day, 24h volume
+$5K-72K per city, spreads 1.3-3c; `KXRAIN` (daily rain, 71 markets) trades about $500K a
+day at 1.2c spread. History is deep (archive cutoff for settled markets is September).
+
+**Model-free calibration, 30 days, quote 16h before close (morning of the measured day):**
+`Temp high daily` 2,409 markets, spread 1.7c; `Rain daily` 500 markets, spread 1.5c.
+Same method and 2c fee as section 12.
+
+| Group | best bucket after fee | note |
+|---|---|---|
+| Temp high daily | 0.50-0.65: +0.2c (z +0.1) | every bucket negative or noise; 95-100c: -1.9c (z -4.3) |
+| Rain daily | 0.90-0.95: +3.6c (z +1.7) | n=49; one of ~20 buckets, consistent with chance |
+
+Morning prices are roughly calibrated by price level alone; no price-bucket pattern beats
+the fee. This does **not** show the markets are unbeatable: it only shows price alone gives
+no edge. A better forecast than the market's (ensemble or NWS point forecast vs the ladder)
+is untested and needs forecast data hosts that are not yet allowed (Open-Meteo, NWS).
+
+Code change: `signal_engine/calibration.py` groups now carry a candle period and lookback so
+sparse daily markets can use hourly candles.

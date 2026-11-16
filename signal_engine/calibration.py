@@ -22,15 +22,21 @@ from . import kalshi
 
 FEE = 0.02
 
-# group name -> (series tickers, lead minutes before close, strike band vs settle value or None)
-GROUPS: Dict[str, Tuple[List[str], int, float | None]] = {
-    "BTC hourly": (["KXBTCD"], 10, 0.04),
-    "BTC 15m": (["KXBTC15M"], 5, None),
-    "ETH 15m": (["KXETH15M"], 5, None),
-    "FX 15m": (["KXEURUSD15M", "KXGBPUSD15M", "KXUSDJPY15M", "KXUSDCAD15M", "KXAUDUSD15M", "KXUSDMXN15M"], 5, None),
-    "Yields 15m": (["KX2YRRATE15M", "KX5YRRATE15M", "KX10YRRATE15M", "KX30YRRATE15M"], 5, None),
-    "Index 15m": (["KXINX15M", "KXNDQ15M", "KXDJIA15M"], 5, None),
-    "Index hourly": (["KXINXU", "KXNASDAQ100U"], 10, 0.01),
+# group name -> (series tickers, lead minutes before close, strike band vs settle value or None,
+#                candle period in minutes, how many minutes of candles to look back from the lead time)
+GROUPS: Dict[str, Tuple[List[str], int, float | None, int, int]] = {
+    "BTC hourly": (["KXBTCD"], 10, 0.04, 1, 10),
+    "BTC 15m": (["KXBTC15M"], 5, None, 1, 10),
+    "ETH 15m": (["KXETH15M"], 5, None, 1, 10),
+    "FX 15m": (["KXEURUSD15M", "KXGBPUSD15M", "KXUSDJPY15M", "KXUSDCAD15M", "KXAUDUSD15M", "KXUSDMXN15M"], 5, None, 1, 10),
+    "Yields 15m": (["KX2YRRATE15M", "KX5YRRATE15M", "KX10YRRATE15M", "KX30YRRATE15M"], 5, None, 1, 10),
+    "Index 15m": (["KXINX15M", "KXNDQ15M", "KXDJIA15M"], 5, None, 1, 10),
+    "Index hourly": (["KXINXU", "KXNASDAQ100U"], 10, 0.01, 1, 10),
+    # weather: quote ~16h before close, i.e. the morning of the measured day, before the high is known
+    "Temp high daily": (["KXHIGHNY", "KXHIGHLAX", "KXHIGHMIA", "KXHIGHCHI", "KXHIGHPHIL", "KXHIGHAUS", "KXHIGHDEN",
+                         "KXHIGHTHOU", "KXHIGHTBOS", "KXHIGHTATL", "KXHIGHTDAL", "KXHIGHTOKC", "KXHIGHTSFO",
+                         "KXHIGHTMIN", "KXHIGHTSATX", "KXHIGHTLV", "KXHIGHTSEA", "KXHIGHTNOLA"], 960, None, 60, 240),
+    "Rain daily": (["KXRAIN"], 960, None, 60, 240),
 }
 
 EDGES = [0.0, 0.05, 0.10, 0.20, 0.35, 0.50, 0.65, 0.80, 0.90, 0.95, 1.0]
@@ -57,7 +63,7 @@ def collect(days: int, cache_path: str, groups: Iterable[str]) -> List[Dict[str,
     end = (now // 900) * 900 - 900
     start = end - days * 86400
     for gname in groups:
-        series_list, lead, band = GROUPS[gname]
+        series_list, lead, band, period, look = GROUPS[gname]
         by_close: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
         for s in series_list:
             try:
@@ -86,7 +92,7 @@ def collect(days: int, cache_path: str, groups: Iterable[str]) -> List[Dict[str,
                 chunk = ms[i:i + 100]
                 d = kalshi.get("/markets/candlesticks", {
                     "market_tickers": ",".join(m["ticker"] for m in chunk),
-                    "start_ts": t0 - 600, "end_ts": t0 + 60, "period_interval": 1})
+                    "start_ts": t0 - look * 60, "end_ts": t0 + 60, "period_interval": period})
                 time.sleep(0.15)
                 info = {m["ticker"]: m for m in chunk}
                 for x in d.get("markets", []):
