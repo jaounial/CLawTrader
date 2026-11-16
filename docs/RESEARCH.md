@@ -217,3 +217,41 @@ proof that none exists. Quotes are the candle close, so real fills may differ.
 
 **Decision:** no BTC hourly trade alerts. Alerts stay disabled until a strategy passes a
 backtest with a positive fee-adjusted result.
+
+## 12. Model-free calibration test (longshot bias + less crowded markets)
+
+Code: `signal_engine/calibration.py` (+ `tests/test_calibration.py`). Data: 7 days of settled
+Kalshi markets up to 2026-11-16 ~17:00Z, quote taken 10 min (hourly) or 5 min (15-min
+markets) before close from batch candlesticks. For every market both "buy YES at the ask"
+and "buy NO at 1 - bid" are scored, paying the 2c fee, bucketed by price. Standard errors
+are clustered by settlement time (strikes within one hour are not independent).
+6,358 markets total.
+
+| Group | markets | avg spread | best bucket after fee | worst bucket after fee |
+|---|---|---|---|---|
+| BTC hourly (strikes within 4%) | 1,900 | 1.1c | 0.65-0.80: +0.9c (z +0.3) | 0.20-0.35: -5.5c |
+| BTC 15m | 666 | 0.6c | 0.10-0.20: +4.0c (z +1.1) | 0.20-0.35: -6.3c |
+| FX 15m (6 pairs) | 2,360 | 2.0c | 0.35-0.50: -0.8c | 0.50-0.65: -4.9c |
+| Yields 15m (2/5/10/30Y) | 880 | 4.6c | 0.90-0.95: -0.3c | 0.35-0.50: -8.0c |
+| Index 15m | 126 | 1.5c | n too small | n too small |
+| Index hourly | 426 | 2.6c | 0.35-0.50: +1.3c (z +0.2) | 0.65-0.80: -12.5c |
+
+**Longshot bias is real but smaller than the fee.** Longshots (price under 5c) won far less
+than their price implies (BTC hourly: 0.6% vs 2.3%; FX 15m: 1.4% vs 3.0%), and favourites
+(95c+) won slightly more than priced (BTC hourly 99.3% vs 98.4%, about +0.9c before fee).
+The largest favourable pre-fee gap in any bucket was about +1.8c (yields, NO side at
+90-95c). The flat 2c fee per contract erases it: the 95-100c bucket in BTC hourly lost
+1.1c per contract after fee (z -3.2).
+
+**Less crowded markets are not more exploitable at taker prices.** FX and yield 15-minute
+contracts have wider spreads (2c and 4.6c) and every bucket was negative or noise after
+fee. The few positive cells (BTC 15m 0.10-0.20, z +1.1) are what ~60 tested buckets produce
+by chance.
+
+Caveats: one week only; quotes are candle closes; taker fills only (resting limit orders
+could capture part of the spread but this cannot be backtested from candles, and
+Wealthsimple's fee treatment of limit orders is unknown); the Index 15m sample is tiny
+(US market hours only); a bucket with every outcome identical shows a meaninglessly small
+standard error.
+
+**Decision:** no strategy in these groups passes. Alerts remain disabled.
