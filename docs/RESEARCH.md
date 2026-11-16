@@ -286,3 +286,53 @@ is untested and needs forecast data hosts that are not yet allowed (Open-Meteo, 
 
 Code change: `signal_engine/calibration.py` groups now carry a candle period and lookback so
 sparse daily markets can use hourly candles.
+
+## 14. Weather: true day-ahead forecasts vs Kalshi daily-high markets
+
+Code: `signal_engine/weather.py`, `signal_engine/openmeteo.py`, `signal_engine/backtest_weather.py`.
+
+- **Forecasts:** Open-Meteo *previous-runs* API (`temperature_2m_previous_day1`, daily max of
+  the forecast issued the day before). The "historical forecast" archive was rejected: it
+  stitches the first hours of each model run and behaves like analysis, which leaks the answer.
+- **Model:** actual high ~ Normal(forecast - city bias, sigma), discretised to integer degrees
+  per market bin. Bias (shrunk) and pooled sigma are fitted only on days at least 2 days
+  earlier (walk-forward, 30-day window).
+- **Market quote:** hourly candle 16h before close (morning of the measured day), buy at the
+  ask (NO = 1 - bid), 2c fee, scored on the real settled outcome.
+- **Sample:** 12 cities (NYC, LA, Miami, Chicago, Philadelphia, Austin, Denver, Houston,
+  Boston, Atlanta, Dallas, OKC), about 66 days, 3,705 scored markets. Six more cities were
+  not fetched because Open-Meteo throttled the sandbox's shared IP.
+  Forecast-vs-actual: MAE 2.38F, bias -1.36F.
+
+| sigma scale | min EV | trades | mean P&L / contract | z | Brier model / market |
+|---|---|---|---|---|---|
+| 0.9 | 0.03 | 2,495 | -0.034 | -4.8 | 0.160 / 0.113 |
+| 1.0 | 0.05 | 2,319 | -0.034 | -4.8 | 0.161 / 0.113 |
+| 1.0 | 0.12 | 1,581 | -0.032 | -3.3 | 0.161 / 0.113 |
+| 1.2 | 0.12 | 1,617 | -0.025 | -2.7 | 0.163 / 0.113 |
+
+All 12 configurations lost 2.5-3.8c per contract after fees, with both YES and NO sides
+negative. Standard errors are clustered by day.
+
+**Why it fails:** the market's morning prices are far sharper than a day-ahead forecast
+(Brier 0.113 vs 0.161). By the morning of the measured day the market has the latest model
+runs (HRRR/NBM) and overnight observations. The test is deliberately lagged: a clean
+same-day forecast is not available from this API (day-0 data leaks), so a live system could
+do somewhat better than tested, but the gap to the market is large, not marginal.
+
+**Untested:** ensemble-based probabilities, same-day nowcasting with live station
+observations, the six unfetched cities, hourly-temperature markets, summer volatility.
+
+## 15. Overall conclusion (as of 2026-11-16)
+
+Four independent tests, all negative after the flat 2c fee:
+1. BTC hourly with a spot+volatility model: -6 to -12c per contract.
+2. Model-free price-bucket calibration (BTC, FX, yields, indices, weather): the longshot bias
+   is about 1-2c, no larger than the fee.
+3. Canadian economics markets: too thin and too little history to test.
+4. Weather with true day-ahead forecasts: -2.5 to -3.8c per contract.
+
+**No trade alerts should be enabled.** With no demonstrated edge, systematic high-volume
+trading is expected to lose roughly the fee plus spread on every contract. Tax note: if the
+CRA treated it as a hobby or gambling, losses may not be deductible (section on taxes in chat
+history; confirm with an accountant).
