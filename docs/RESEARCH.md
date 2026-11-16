@@ -137,3 +137,26 @@ Unlike sections 1-7, these were read directly from `docs.kalshi.com` and
 Not yet verified: which of these series Wealthsimple actually lists, its order types and
 minimums, the settlement source for each index/FX series, and a real-time price feed for
 the underlyings.
+
+## 9. Wealthsimple Predict app vs Kalshi (screenshot check, 2026-11-16 11:43 ET)
+
+User screenshots show the app home screen. Tabs: **Canada, Markets, Companies, Economy,
+Climate**. Trending card: "Bank of Canada decision in Dec 2026?", Hike 25bps shown as
+Yes 43% / No 57%, "$171K vol", "5 markets".
+
+Cross-check against Kalshi (`KXCBDECISIONCANADA`, closes 2026-12-09):
+
+| Kalshi outcome | yes bid/ask | volume |
+|---|---|---|
+| Hike 25bps | 0.42 / 0.44 | 64,225 |
+| Maintains rate | 0.54 / 0.57 | 99,707 |
+| Hike >25bps | 0.00 / 0.01 | 2,738 |
+| Cut >25bps | 0.00 / 0.01 | 2,705 |
+| Cut 25bps | 0.00 / 0.01 | 1,980 |
+
+- Displayed 43% = midpoint of 0.42/0.44. Total volume 171,355 matches "$171K vol" and the
+  five outcomes match "5 markets". **The app mirrors Kalshi's order books.**
+- **Alerts must use the ask, not the displayed percentage.** Buying Yes costs 44c, not 43c.
+- Trending events are long-dated; short-term 15-minute/hourly markets are presumably under
+  the Markets tab but this is not yet confirmed.
+- Unknown: order types (limit vs market), minimum size, how the 2c fee is shown.
